@@ -2,7 +2,7 @@
 
 function clamp2($value, $min, $max)
 {
-    return min(max($value, $min, $max));
+    return min(max($value, $min), $max);
 }
 
 $sum = 0;
