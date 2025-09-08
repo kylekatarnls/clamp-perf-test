@@ -1,0 +1,116 @@
+name: Push
+on:
+  push:
+    branches:
+      - '**'
+jobs:
+  benchmark:
+    name: benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout PHP with clamp feature
+        uses: actions/checkout@v5
+        with:
+          repository: 'kylekatarnls/php-src'
+          ref: feature/clamp
+
+      - name: Add scripts
+        uses: actions/checkout@v5
+        with:
+          path: test
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          sudo apt-get update -y | true
+          sudo apt-get install -y \
+            hyperfine \
+            autoconf \
+            gcc \
+            make \
+            curl \
+            unzip \
+            bison \
+            re2c \
+            locales \
+            ldap-utils \
+            openssl \
+            slapd \
+            language-pack-de \
+            libgmp-dev \
+            libicu-dev \
+            libtidy-dev \
+            libenchant-2-dev \
+            libbz2-dev \
+            libsasl2-dev \
+            libxpm-dev \
+            libzip-dev \
+            libwebp-dev \
+            libonig-dev \
+            libcurl4-openssl-dev \
+            libxml2-dev \
+            libxslt1-dev \
+            libpq-dev \
+            libedit-dev \
+            libldap2-dev \
+            libsodium-dev \
+            libargon2-dev \
+            libmm-dev \
+            libsnmp-dev \
+            snmpd \
+            snmp-mibs-downloader \
+            freetds-dev \
+            unixodbc-dev \
+            llvm \
+            clang \
+            dovecot-core \
+            dovecot-pop3d \
+            dovecot-imapd \
+            liblmdb-dev \
+            libtokyocabinet-dev \
+            libdb-dev \
+            libqdbm-dev \
+            libjpeg-dev \
+            libpng-dev \
+            libfreetype6-dev
+
+      - name: Configure PHP
+        shell: bash
+        run: |
+          set -x
+          ./buildconf --force
+          ./configure \
+          --enable-option-checking=fatal \
+          --prefix=/usr \
+          --enable-phpdbg \
+          --enable-fpm \
+          --without-pear \
+          --enable-gd \
+          --enable-exif \
+          --with-zip \
+          --with-zlib \
+          --enable-soap \
+          --enable-sysvsem \
+          --enable-sysvshm \
+          --enable-shmop \
+          --enable-pcntl \
+          --without-readline --with-libedit \
+          --enable-mbstring \
+
+      - name: Make
+        run: make -j$(/usr/bin/nproc) >/dev/null
+
+      - name: Build
+        shell: bash
+        run: |
+          set -x
+          sudo make install
+          sudo mkdir -p /etc/php.d
+          sudo chmod 777 /etc/php.d
+
+      - name: Benchmark
+        run: hyperfine --show-output \
+          'sapi/cli/php test/min-max.php' \
+          'sapi/cli/php test/ternary.php' \
+          'sapi/cli/php test/clamp.php'
